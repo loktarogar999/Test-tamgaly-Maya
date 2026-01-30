@@ -1,0 +1,389 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tamgaly Explorer - Grade 8 Lesson</title>
+    
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    
+    <style>
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #0c0a09; 
+            color: #f5f5f4; 
+            margin: 0;
+            overflow-x: hidden;
+            font-size: 0.95rem;
+        }
+        .font-cinzel { font-family: 'Cinzel', serif; }
+        
+        .rock-texture {
+            background-image: url('https://www.transparenttextures.com/patterns/dark-matter.png');
+            background-attachment: fixed;
+        }
+
+        /* --- Advanced Animations --- */
+        @keyframes reveal {
+            from { opacity: 0; transform: translateY(20px) scale(0.98); filter: blur(4px); }
+            to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+        }
+
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(217, 119, 6, 0.1); }
+            50% { box-shadow: 0 0 35px rgba(217, 119, 6, 0.3); }
+        }
+
+        @keyframes slide-right {
+            from { opacity: 0; transform: translateX(-15px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .animate-reveal { 
+            animation: reveal 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; 
+        }
+
+        .shimmer-btn {
+            background: linear-gradient(90deg, #d97706 0%, #f59e0b 50%, #d97706 100%);
+            background-size: 200% 100%;
+            animation: shimmer 3s infinite linear, pulse-glow 3s infinite ease-in-out;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #1c1917; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #44403c; border-radius: 10px; }
+        
+        .card-hover {
+            transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+        .card-hover:hover {
+            transform: translateY(-5px) scale(1.01);
+            border-color: rgba(217, 119, 6, 0.5);
+            box-shadow: 0 15px 30px -10px rgba(0,0,0,0.6);
+            background-color: rgba(28, 25, 23, 0.8);
+        }
+
+        .stagger-item { opacity: 0; }
+        .active .stagger-item { animation: reveal 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+    </style>
+
+<link rel="stylesheet" href="/index.css">
+<script type="importmap">
+{
+  "imports": {
+    "@google/genai": "https://esm.sh/@google/genai@^1.38.0",
+    "react": "https://esm.sh/react@^19.2.4",
+    "react/": "https://esm.sh/react@^19.2.4/"
+  }
+}
+</script>
+  <script type="module" crossorigin src="/assets/index-B5Qt9EMX.js"></script>
+</head>
+<body class="rock-texture">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        const PETROGLYPHS = [
+            {
+                id: '1',
+                name: 'The Bronze Age Bull / Бык эпохи бронзы',
+                description: 'In the Bronze Age, the bull was a symbol of power. Artists used stone and metal tools to create these unique works of art.',
+                vocab: ['Bull / Бык', 'Power / Сила', 'Tool / Инструмент'],
+                era: '14th century BC',
+                fact: 'Most of the oldest carvings show animals, but there are a few images of people.'
+            },
+            {
+                id: '2',
+                name: 'Equestrian Tribes / Племена всадников',
+                description: 'During the Iron Age, equestrian tribes settled in the area. They carved horses, deer, camels, and even wild asses.',
+                vocab: ['Tribe / Племя', 'Settlement / Поселение', 'Wild ass / Кулан'],
+                era: 'Iron Age',
+                fact: 'Carvings are quite large (25 to 75 cm) and can be seen from far away.'
+            },
+            {
+                id: '3',
+                name: 'Scientific Discovery / Открытие',
+                description: 'Discovered in 1957 by the Kazakhstan Academy of Sciences. There are more than 5,000 petroglyphs in the Tamgaly Gorge.',
+                vocab: ['Gorge / Ущелье', 'Expedition / Экспедиция', 'Discovery / Открытие'],
+                era: '1957 AD',
+                fact: 'Most rock art is on the eastern slopes, but some is on the western side.'
+            }
+        ];
+
+        const VOCABULARY_LIST = [
+            { word: 'Gorge', translation: 'Ущелье', desc: 'A narrow valley with steep walls.' },
+            { word: 'Petroglyph', translation: 'Петроглиф', desc: 'A rock carving.' },
+            { word: 'Slope', translation: 'Склон', desc: 'The side of a hill or mountain.' },
+            { word: 'Patina', translation: 'Патина', desc: 'A dark film covering the rock.' },
+            { word: 'Bull', translation: 'Бык', desc: 'An uncastrated male bovine.' },
+            { word: 'Tribe', translation: 'Племя', desc: 'A social group in societies.' },
+            { word: 'Shepherd', translation: 'Пастух', desc: 'A person who tends sheep.' },
+            { word: 'Settlement', translation: 'Поселение', desc: 'A place where people establish community.' }
+        ];
+
+        const FULL_QUESTION_BANK = [
+            { q: "Where is Tamgaly located?", a: ["Chu-Ili mountains", "North Kazakhstan", "West Kazakhstan", "Altai mountains"], c: "Chu-Ili mountains" },
+            { q: "When was the scientific expedition organized?", a: ["1957", "1945", "1991", "2004"], c: "1957" },
+            { q: "How many petroglyphs are there in Tamgaly?", a: ["Over 5,000", "500", "1,500", "10,000"], c: "Over 5,000" },
+            { q: "Where is MOST of the rock art located?", a: ["On eastern slopes", "On western slopes", "In caves", "Under the river"], c: "On eastern slopes" },
+            { q: "How old are the earliest petroglyphs?", a: ["More than 3,000 years", "1,000 years", "2,000 years", "5,000 years"], c: "More than 3,000 years" },
+            { q: "What is the typical size of the carvings?", a: ["25 to 75 cm", "5 to 10 cm", "1 to 2 meters", "Small like coins"], c: "25 to 75 cm" },
+            { q: "What tools did prehistoric people use?", a: ["Stone and metal tools", "Only stone", "Bronze and wood", "Lasers"], c: "Stone and metal tools" },
+            { q: "What do most of the oldest carvings show?", a: ["Animals", "People", "Plants", "Stars"], c: "Animals" },
+            { q: "In the Bronze Age, what was the bull a symbol of?", a: ["Power", "Peace", "Wealth", "Speed"], c: "Power" },
+            { q: "Who settled in the area during the Iron Age?", a: ["Equestrian tribes", "Farmers", "Sailors", "Shepherds"], c: "Equestrian tribes" },
+            { q: "Which animal was NOT mentioned in the Iron Age carvings?", a: ["Elephant", "Deer", "Camel", "Wolf"], c: "Elephant" },
+            { q: "Who made carvings of horses and goats in the 19th century?", a: ["Kazakh shepherds", "Scientists", "Warriors", "Ancient tribes"], c: "Kazakh shepherds" },
+            { q: "What covers the surface of the rocks?", a: ["Dark patina", "Moss", "Paint", "Dust"], c: "Dark patina" },
+            { q: "Which organization discovered the site?", a: ["Academy of Sciences", "Ministry of Art", "UNESCO", "School Club"], c: "Academy of Sciences" },
+            { q: "The 'Sun-headed deities' belong to which era?", a: ["Bronze Age", "Iron Age", "19th Century", "Middle Ages"], c: "Bronze Age" },
+            { q: "What side of the gorge has LESS rock art?", a: ["Western", "Eastern", "Northern", "Southern"], c: "Western" },
+            { q: "Is there a good explanation for why they were created?", a: ["No, none provide a good one", "Yes, scientists know all", "It was only for magic", "It was for fun"], c: "No, none provide a good one" },
+            { q: "Which animal replaced bulls in the Iron Age art?", a: ["Horses", "Birds", "Goats", "Wolves"], c: "Horses" },
+            { q: "In which part of Kazakhstan is it located?", a: ["South-east", "North-west", "Central", "East"], c: "South-east" },
+            { q: "What describes a 'Gorge'?", a: ["A narrow valley", "A high peak", "A flat desert", "A large lake"], c: "A narrow valley" },
+            { q: "When did Tamgaly become a UNESCO World Heritage site?", a: ["2004", "1957", "1991", "2010"], c: "2004" },
+            { q: "What is another name for 'wild asses' in the text?", a: ["Kulans", "Camels", "Deer", "Bulls"], c: "Kulans" },
+            { q: "What is the maximum size of a typical carving in Tamgaly?", a: ["75 cm", "10 cm", "2 meters", "50 cm"], c: "75 cm" },
+            { q: "Are there many images of people in the oldest carvings?", a: ["No, very few", "Yes, thousands", "Only one", "None"], c: "No, very few" },
+            { q: "What kind of tools were used specifically in the Bronze Age?", a: ["Stone and metal", "Wooden", "Plastic", "Only stone"], c: "Stone and metal" }
+        ];
+
+        const App = () => {
+            const [state, setState] = useState('WELCOME');
+            const [currentQuiz, setCurrentQuiz] = useState([]);
+            const [quizIdx, setQuizIdx] = useState(0);
+            const [score, setScore] = useState(0);
+            const [isTransitioning, setIsTransitioning] = useState(false);
+
+            useEffect(() => {
+                // Force a small delay for staggered entrance animations
+                const container = document.getElementById('view-container');
+                if (container) {
+                    container.classList.remove('active');
+                    setTimeout(() => container.classList.add('active'), 10);
+                }
+            }, [state]);
+
+            const shuffle = (arr) => [...arr].sort(() => Math.random() - 0.5);
+
+            const prepareQuiz = () => {
+                const picked = shuffle(FULL_QUESTION_BANK).slice(0, 10);
+                const randomized = picked.map(item => ({
+                    ...item,
+                    options: shuffle(item.a)
+                }));
+                setCurrentQuiz(randomized);
+                setQuizIdx(0);
+                setScore(0);
+                setState('QUIZ');
+            };
+
+            const handleAnswer = (selected) => {
+                if (selected === currentQuiz[quizIdx].c) setScore(s => s + 1);
+                
+                setIsTransitioning(true);
+                setTimeout(() => {
+                    if (quizIdx < 9) {
+                        setQuizIdx(v => v + 1);
+                        setIsTransitioning(false);
+                    } else {
+                        setState('VICTORY');
+                        setIsTransitioning(false);
+                    }
+                }, 400);
+            };
+
+            return (
+                <div className="min-h-screen bg-stone-950 text-stone-100 flex flex-col rock-texture">
+                    <header className="border-b border-stone-800 bg-black/60 backdrop-blur-md sticky top-0 z-50">
+                        <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
+                            <button onClick={() => setState('WELCOME')} className="flex items-center space-x-2 hover:opacity-80 transition-all active:scale-95 group">
+                                <div className="w-8 h-8 bg-amber-600 rounded-lg flex items-center justify-center font-cinzel font-bold text-lg shadow-lg group-hover:rotate-6 transition-transform">T</div>
+                                <h1 className="font-cinzel text-base font-bold tracking-widest hidden sm:block text-amber-50 uppercase">Tamgaly • Lesson 6</h1>
+                            </button>
+                            <div className="flex space-x-4">
+                                {state !== 'WELCOME' && (
+                                    <button onClick={() => setState('EXPLORATION')} className={`text-[10px] uppercase font-bold tracking-widest px-4 py-1.5 rounded-full transition-all active:scale-95 ${state === 'EXPLORATION' ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/20' : 'hover:bg-stone-800 border border-stone-700 text-stone-400'}`}>
+                                        Study / Изучение
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </header>
+
+                    <main id="view-container" className="flex-1 max-w-6xl mx-auto w-full p-4 sm:p-8 active">
+                        <div key={state} className="animate-reveal w-full">
+                            {state === 'WELCOME' && (
+                                <div className="max-w-2xl mx-auto text-center space-y-10 pt-16">
+                                    <div className="stagger-item inline-block px-4 py-1 rounded-full border border-amber-500/20 bg-amber-500/5 text-amber-500 text-[10px] font-bold uppercase tracking-[0.2em] animate-pulse">
+                                        Unit 6: My Country
+                                    </div>
+                                    <h2 className="stagger-item text-4xl sm:text-7xl font-cinzel font-bold text-white drop-shadow-2xl leading-tight" style={{animationDelay: '0.1s'}}>
+                                        Rock Art <span className="text-amber-500">Explorer</span>
+                                    </h2>
+                                    <p className="stagger-item text-stone-400 text-base leading-relaxed max-w-md mx-auto font-light" style={{animationDelay: '0.2s'}}>
+                                        Ancient history of Kazakhstan at your fingertips. Discover the world-famous Tamgaly Petroglyphs gorge.
+                                    </p>
+                                    <div className="stagger-item pt-4" style={{animationDelay: '0.3s'}}>
+                                        <button 
+                                            onClick={() => setState('EXPLORATION')} 
+                                            className="shimmer-btn text-white px-10 py-4 rounded-2xl text-lg font-bold transition-all hover:scale-110 active:scale-95 uppercase tracking-wider shadow-2xl"
+                                        >
+                                            Start Lesson / Начать урок
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {state === 'EXPLORATION' && (
+                                <div className="grid lg:grid-cols-4 gap-8">
+                                    <div className="lg:col-span-3 space-y-8">
+                                        <div className="stagger-item bg-stone-900/80 border border-stone-800 p-6 sm:p-8 rounded-[2rem] flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl relative overflow-hidden group">
+                                            <div className="text-center md:text-left relative z-10">
+                                                <h4 className="font-cinzel text-2xl font-bold text-amber-500 tracking-tight group-hover:text-amber-400 transition-colors">Challenge Mode</h4>
+                                                <p className="text-stone-400 mt-1 text-sm font-light">Test your skills with our 10-question master quiz.</p>
+                                            </div>
+                                            <button 
+                                                onClick={prepareQuiz} 
+                                                className="bg-amber-600 hover:bg-amber-500 text-white px-8 py-3 rounded-xl font-bold text-base transition-all shadow-lg active:scale-95 whitespace-nowrap uppercase tracking-widest relative z-10 hover:shadow-amber-600/40"
+                                            >
+                                                Start Quiz / Начать тест
+                                            </button>
+                                            <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/5 blur-[80px] rounded-full -mr-16 -mt-16 group-hover:bg-amber-500/10 transition-colors"></div>
+                                        </div>
+
+                                        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                                            {PETROGLYPHS.map((p, idx) => (
+                                                <div 
+                                                    key={p.id} 
+                                                    className="stagger-item bg-stone-900/40 border border-stone-800 rounded-3xl p-6 flex flex-col h-full space-y-5 card-hover"
+                                                    style={{animationDelay: `${0.1 * (idx + 1)}s`}}
+                                                >
+                                                    <div>
+                                                        <span className="text-[9px] text-amber-500/60 font-black uppercase tracking-widest mb-1 block">{p.era}</span>
+                                                        <h3 className="text-xl font-cinzel font-bold text-amber-50 leading-tight">{p.name}</h3>
+                                                    </div>
+                                                    <p className="text-stone-400 text-xs leading-relaxed font-light">{p.description}</p>
+                                                    <div className="mt-auto pt-4 space-y-4">
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {p.vocab.map(v => <span key={v} className="text-[9px] uppercase tracking-wider font-bold bg-white/5 text-stone-500 px-3 py-1.5 rounded-lg border border-white/5 hover:border-amber-500/30 transition-colors">{v}</span>)}
+                                                        </div>
+                                                        <div className="p-4 bg-amber-500/5 rounded-2xl border-l-2 border-amber-600">
+                                                            <p className="text-[10px] italic text-amber-200/70 leading-relaxed"><span className="font-black text-amber-500 not-italic mr-1">FACT:</span> {p.fact}</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    
+                                    <aside className="space-y-6">
+                                        <div className="stagger-item bg-stone-900/50 backdrop-blur-sm border border-stone-800 p-6 rounded-[2rem] space-y-5 max-h-[75vh] overflow-y-auto custom-scrollbar shadow-inner" style={{animationDelay: '0.4s'}}>
+                                            <h4 className="font-cinzel font-bold text-amber-500 border-b border-stone-800 pb-3 uppercase text-[10px] tracking-[0.2em]">Glossary / Словарь</h4>
+                                            <div className="space-y-5">
+                                                {VOCABULARY_LIST.map((item, idx) => (
+                                                    <div key={idx} className="group cursor-default border-b border-white/5 pb-3 last:border-0 hover:translate-x-1.5 transition-transform duration-300">
+                                                        <div className="flex justify-between items-start">
+                                                            <span className="text-white font-bold text-xs group-hover:text-amber-500 transition-colors">{item.word}</span>
+                                                            <span className="text-stone-600 text-[8px] font-black uppercase ml-2 text-right">{item.translation}</span>
+                                                        </div>
+                                                        <p className="text-[10px] text-stone-600 italic mt-1 leading-tight group-hover:text-stone-400 transition-colors">{item.desc}</p>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </aside>
+                                </div>
+                            )}
+
+                            {state === 'QUIZ' && (
+                                <div className="max-w-lg mx-auto pt-12 space-y-10">
+                                    <div className="text-center stagger-item">
+                                        <span className="text-amber-500 text-[10px] font-black uppercase tracking-[0.4em] block mb-2">Knowledge Evaluation</span>
+                                        <h3 className="text-3xl font-cinzel font-bold text-white">Interactive Assessment</h3>
+                                    </div>
+                                    
+                                    <div className={`stagger-item bg-stone-900/90 backdrop-blur-xl border border-stone-700/50 p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden transition-all duration-500 ${isTransitioning ? 'opacity-20 scale-95 blur-sm' : 'opacity-100 scale-100'}`}>
+                                        <div className="absolute top-0 left-0 w-full h-1.5 bg-stone-800">
+                                            <div 
+                                                className="h-full bg-amber-600 transition-all duration-700 ease-out" 
+                                                style={{width: `${((quizIdx+1)/10)*100}%`}}
+                                            ></div>
+                                        </div>
+                                        <div className="relative z-10 space-y-8">
+                                            <div className="flex justify-between items-center text-[10px] font-bold text-stone-500 uppercase tracking-widest">
+                                                <span className="bg-stone-950 px-4 py-1 rounded-full border border-stone-800">Mission {quizIdx + 1} / 10</span>
+                                                <span className="text-amber-500 text-sm">Score: {score}</span>
+                                            </div>
+                                            <h4 className="text-xl font-medium leading-relaxed text-white min-h-[5rem] animate-fade-in" key={quizIdx}>
+                                                {currentQuiz[quizIdx]?.q}
+                                            </h4>
+                                            <div className="grid gap-4">
+                                                {currentQuiz[quizIdx]?.options.map((opt, i) => (
+                                                    <button 
+                                                        key={i} 
+                                                        onClick={() => handleAnswer(opt)} 
+                                                        className="w-full text-left p-5 rounded-2xl bg-stone-800/50 hover:bg-amber-600 transition-all border border-stone-800 hover:border-amber-400 text-sm font-medium hover:translate-x-3 active:scale-95 group flex justify-between items-center"
+                                                    >
+                                                        <span>{opt}</span>
+                                                        <span className="opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0 font-bold">→</span>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {state === 'VICTORY' && (
+                                <div className="max-w-xl mx-auto text-center space-y-12 pt-16">
+                                    <div className="stagger-item w-24 h-24 bg-amber-600 rounded-3xl mx-auto flex items-center justify-center shadow-[0_0_50px_rgba(217,119,6,0.4)] animate-bounce" style={{animationDuration: '3s'}}>
+                                        <svg className="w-12 h-12 text-black" fill="currentColor" viewBox="0 0 24 24"><path d="M12 1L9 9H1L7 14L4 22L12 17L20 22L17 14L23 9H15L12 1z"/></svg>
+                                    </div>
+                                    <div className="space-y-4">
+                                        <h2 className="stagger-item text-5xl font-cinzel font-bold text-white uppercase tracking-widest" style={{animationDelay: '0.1s'}}>Victory Unlocked</h2>
+                                        <p className="stagger-item text-stone-400 text-lg font-light italic" style={{animationDelay: '0.2s'}}>Explorer status successfully verified</p>
+                                    </div>
+                                    <div className="stagger-item p-6 px-12 bg-amber-600/5 border border-amber-500/20 inline-block rounded-[2rem] shadow-inner backdrop-blur-md" style={{animationDelay: '0.3s'}}>
+                                        <p className="text-lg text-stone-400 uppercase tracking-widest font-black text-[10px] mb-2">Final Evaluation</p>
+                                        <p className="text-4xl text-amber-500 font-bold">{score} <span className="text-2xl text-stone-700 font-light">/ 10</span></p>
+                                    </div>
+                                    <div className="stagger-item pt-4" style={{animationDelay: '0.4s'}}>
+                                        <button 
+                                            onClick={() => setState('WELCOME')} 
+                                            className="shimmer-btn text-white px-12 py-5 rounded-2xl font-bold text-xl transition-all hover:scale-110 active:scale-95 transform uppercase tracking-widest shadow-2xl"
+                                        >
+                                            Main Menu / В главное меню
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </main>
+
+                    <footer className="border-t border-stone-800/50 p-10 text-center text-stone-700 text-[8px] uppercase tracking-[0.6em] font-bold bg-black/30">
+                        <p className="opacity-40">&copy; 2024 Grade 8 • Unit 6: My Country • Tamgaly Gorge • Interactive Learning Experience</p>
+                    </footer>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
